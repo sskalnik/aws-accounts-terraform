@@ -1,8 +1,23 @@
-# Terraform
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-
-# OS X
+# Ignore OS X metadata files
 .history
 .DS_Store
+
+# Ignore vscode
+**.vscode
+
+# Ignore tfstate
+*.tfstate
+**tfstate.*
+
+# Ignore terraform installs
+**.terraform
+**/.terraform/*
+
+# Ignore pem file(s)
+**.pem
+
+# Don't ask why this happened often enough to warrant inclusion...
+crash.log
+
+# Ignore vim swap files
+**.swp

@@ -1,3 +1,9 @@
-variable "account_name" {}
-variable "account_id" {}
-variable "role" {}
+variable "account_name" {
+}
+
+variable "account_id" {
+}
+
+variable "role" {
+}
+
