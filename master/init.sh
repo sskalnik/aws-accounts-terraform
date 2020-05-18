@@ -81,31 +81,25 @@ export_master_keys
 if [[ -n "${SKIP_LOCAL_STATE}" ]]; then
     echo "=== RUNNING ORG CONFIGS WITH REMOTE STATE ==="
     INFOSEC_AWS_ACCT=$(terraform output infosec_acct_id)
-    export "TG_AWS_ACCT=${INFOSEC_AWS_ACCT}"
-    terragrunt apply
-    unset "TG_AWS_ACCT"
+    terraform apply -var infosec_acct_id=${INFOSEC_AWS_ACCT}
 else
     echo "=== RUNNING ORG CONFIGS WITH LOCAL STATE ==="
     cp overrides/backend_local_override.tf .
-    terragrunt init --terragrunt-config terraform-local.tfvars
-    terragrunt apply --terragrunt-config terraform-local.tfvars
+    terraform init -var-file=terraform-local.tfvars
+    terraform apply -var-file=terraform-local.tfvars
     INFOSEC_AWS_ACCT=$(terraform output infosec_acct_id)
     
     echo "=== COPYING LOCAL STATE TO S3 ==="
     rm ./backend_local_override.tf || true
     sleep 10 # give AWS some time for the IAM policy to take effect
-    export "TG_AWS_ACCT=${INFOSEC_AWS_ACCT}"
-    terragrunt init
-    unset "TG_AWS_ACCT"
+    terraform init -var infosec_acct_id=${INFOSEC_AWS_ACCT}
 fi
 MASTER_ALIAS=$(terraform output account_alias)
 popd
 
 echo "=== CREATING temp-admin USER ==="
 pushd ./temp-admin
-export "TG_AWS_ACCT=${INFOSEC_AWS_ACCT}"
-terragrunt apply -var infosec_acct_id=${INFOSEC_AWS_ACCT} -var keybase=${KEYBASE_PROFILE}
-unset "TG_AWS_ACCT"
+terraform apply -var infosec_acct_id=${INFOSEC_AWS_ACCT} -var keybase=${KEYBASE_PROFILE}
 ADMIN_ACCESS_KEY=$(terraform output temp_admin_access_key)
 ADMIN_SECRET_KEY=$(terraform output temp_admin_secret_key | base64 --decode | keybase pgp decrypt)
 popd
@@ -114,25 +108,25 @@ sleep 10 # give AWS some time for the new access key to be ready
 echo "=== APPLYING ACCOUNTS CONFIGS ==="
 export_admin_keys
 pushd ../accounts/infosec
-terragrunt init
-terragrunt apply
+terraform init
+terraform apply
 INFOSEC_ALIAS=$(terraform output account_alias)
 popd
 pushd ../accounts/prod
-terragrunt init
-terragrunt apply
+terraform init
+terraform apply
 PROD_ALIAS=$(terraform output account_alias)
 popd
 pushd ../accounts/non-prod
-terragrunt init
-terragrunt apply
+terraform init
+terraform apply
 NONPROD_ALIAS=$(terraform output account_alias)
 popd
 
 if [[ -n "${LOGIN_USER}" ]]; then
     echo "=== GENERATING TEMP PASSWORD FOR ${LOGIN_USER} ==="
     pushd ../utility/one-time-login
-    terragrunt apply -var user_name=${LOGIN_USER} -var infosec_acct_id=${INFOSEC_AWS_ACCT} -var keybase=${KEYBASE_PROFILE}
+    terraform apply -var user_name=${LOGIN_USER} -var infosec_acct_id=${INFOSEC_AWS_ACCT} -var keybase=${KEYBASE_PROFILE}
     ENCRYPTED_PASS=$(terraform output temp_password)
     terraform taint aws_iam_user_login_profile.login
     popd
@@ -141,9 +135,7 @@ fi
 echo "=== DELETING temp-admin USER ==="
 pushd ./temp-admin
 export_master_keys
-export "TG_AWS_ACCT=${INFOSEC_AWS_ACCT}"
-terragrunt destroy -var infosec_acct_id=${INFOSEC_AWS_ACCT} -var keybase=${KEYBASE_PROFILE}
-unset "TG_AWS_ACCT"
+terraform destroy -var infosec_acct_id=${INFOSEC_AWS_ACCT} -var keybase=${KEYBASE_PROFILE}
 popd
 
 echo "=== INITIALIZATION COMPLETE ==="
